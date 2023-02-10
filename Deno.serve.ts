@@ -88,6 +88,65 @@ async function _serve(
     })();
   }
 }
+/** **UNSTABLE**: New API, yet to be vetted.
+ *
+ * Serves HTTP requests with the given handler.
+ *
+ * You can specify an object with a port and hostname option, which is the
+ * address to listen on. The default is port `9000` on hostname `"127.0.0.1"`.
+ *
+ * The below example serves with the port `9000`.
+ *
+ * ```ts
+ * Deno.serve((_req) => new Response("Hello, world"));
+ * ```
+ *
+ * You can change the address to listen on using the `hostname` and `port`
+ * options. The below example serves on port `3000`.
+ *
+ * ```ts
+ * Deno.serve({ port: 3000 }, (_req) => new Response("Hello, world"));
+ * ```
+ *
+ * You can stop the server with an {@linkcode AbortSignal}. The abort signal
+ * needs to be passed as the `signal` option in the options bag. The server
+ * aborts when the abort signal is aborted. To wait for the server to close,
+ * await the promise returned from the `Deno.serve` API.
+ *
+ * ```ts
+ * const ac = new AbortController();
+ *
+ * Deno.serve({ signal: ac.signal }, (_req) => new Response("Hello, world"))
+ *  .then(() => console.log("Server closed"));
+ *
+ * console.log("Closing server...");
+ * ac.abort();
+ * ```
+ *
+ * By default `Deno.serve` prints the message
+ * `Listening on http://<hostname>:<port>/` on listening. If you like to
+ * change this behavior, you can specify a custom `onListen` callback.
+ *
+ * ```ts
+ * Deno.serve({
+ *   onListen({ port, hostname }) {
+ *     console.log(`Server started at http://${hostname}:${port}`);
+ *     // ... more info specific to your server ..
+ *   },
+ *   handler: (_req) => new Response("Hello, world"),
+ * });
+ * ```
+ *
+ * To enable TLS you must specify the `key` and `cert` options.
+ *
+ * ```ts
+ * const cert = "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----\n";
+ * const key = "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n";
+ * Deno.serve({ cert, key }, (_req) => new Response("Hello, world"));
+ * ```
+ *
+ * @category HTTP Server
+ */
 export function serve(
   handler: ServeHandler,
   options?: ServeOptions | ServeTlsOptions
