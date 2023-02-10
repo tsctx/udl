@@ -90,7 +90,7 @@ async function _serve(
 }
 export function serve(
   handler: ServeHandler,
-  options?: (ServeOptions | ServeTlsOptions) & { stdServer?: boolean }
+  options?: ServeOptions | ServeTlsOptions
 ) {
   if ("serve" in Deno) {
     //@ts-ignore
