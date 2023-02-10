@@ -1,5 +1,5 @@
 // deno-lint-ignore-file ban-ts-comment
-import * as std_server from "../std/server.ts";
+import * as std_server from "https://deno.land/std@0.177.0/http/server.ts";
 
 export type ServeHandler = (request: Request) => Response | Promise<Response>;
 export interface ServeOptions extends Partial<Deno.ListenOptions> {
