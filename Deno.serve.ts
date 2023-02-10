@@ -1,8 +1,8 @@
 // deno-lint-ignore-file ban-ts-comment
-import * as std_server from "https://deno.land/std@0.177.0/http/server.ts";
+import * as std_server from "../std/server.ts";
 
-type ServeHandler = (request: Request) => Response | Promise<Response>;
-interface ServeOptions extends Partial<Deno.ListenOptions> {
+export type ServeHandler = (request: Request) => Response | Promise<Response>;
+export interface ServeOptions extends Partial<Deno.ListenOptions> {
   /** An {@linkcode AbortSignal} to close the server and all connections. */
   signal?: AbortSignal;
 
@@ -15,7 +15,7 @@ interface ServeOptions extends Partial<Deno.ListenOptions> {
   /** The callback which is called when the server starts listening. */
   onListen?: (params: { hostname: string; port: number }) => void;
 }
-interface ServeTlsOptions extends ServeOptions {
+export interface ServeTlsOptions extends ServeOptions {
   /** Server private key in PEM format */
   cert: string;
 
@@ -91,7 +91,7 @@ async function _serve(
 export function serve(
   handler: ServeHandler,
   options?: ServeOptions | ServeTlsOptions
-) {
+): Promise<void> {
   if ("serve" in Deno) {
     //@ts-ignore
     return Deno.serve(handler, options);
