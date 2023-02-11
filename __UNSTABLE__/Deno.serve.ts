@@ -48,27 +48,22 @@ async function _serve(
   handler: ServeHandler,
   options?: Partial<ServeTlsOptions>
 ) {
-  let server: Deno.Listener | Deno.TlsListener;
   let closed = false;
+  let secure = false;
   if (options && options.key && options.cert) {
-    server = Deno.listenTls({
-      port: options.port || 9000,
-      hostname: options.hostname || "127.0.0.1",
-      key: options.key,
-      cert: options.cert,
-      transport: "tcp",
-      //@ts-ignore
-      reusePort: options.reusePort,
-    });
-  } else {
-    server = Deno.listen({
-      port: options?.port || 9000,
-      hostname: options?.hostname || "127.0.0.1",
-      transport: "tcp",
-      //@ts-ignore
-      reusePort: options?.reusePort,
-    });
+    secure = true;
   }
+  const server: Deno.Listener | Deno.TlsListener = (
+    secure ? Deno.listenTls : Deno.listen
+  )({
+    port: options?.port || 9000,
+    hostname: options?.hostname || "127.0.0.1",
+    key: options?.key,
+    cert: options?.cert,
+    transport: "tcp",
+    //@ts-ignore
+    reusePort: options.reusePort,
+  });
   options?.signal?.addEventListener(
     "abort",
     () => {
@@ -111,7 +106,6 @@ async function _serve(
     })();
   }
 }
-
 
 /** **UNSTABLE**: New API, yet to be vetted.
  *
@@ -305,10 +299,13 @@ export function serve(
 ): Promise<void>;
 
 export function serve(
-  args1: (ServeOptions | ServeTlsOptions) | ServeHandler | (ServeInit & (ServeOptions | ServeTlsOptions)),
+  args1:
+    | (ServeOptions | ServeTlsOptions)
+    | ServeHandler
+    | (ServeInit & (ServeOptions | ServeTlsOptions)),
   args2?: (ServeOptions | ServeTlsOptions) | ServeHandler
 ): Promise<void> {
-  let handler: ServeHandler, options: ServeOptions; 
+  let handler: ServeHandler, options: ServeOptions;
   if (typeof args1 === "function") {
     handler = args1;
     options = args2 as ServeOptions;
@@ -318,7 +315,7 @@ export function serve(
   } else {
     options = args1;
     if (typeof (args1 as ServeInit).handler !== "function") {
-      throw new TypeError("A handler function must be provided.")
+      throw new TypeError("A handler function must be provided.");
     }
     handler = (args1 as ServeInit).handler;
   }
@@ -333,26 +330,20 @@ export function serve(
       return Deno[Deno.internal].nodeUnstable.serve(handler, options);
     }
   }
+  let secure = false;
+  if ((options as ServeTlsOptions)?.key && (options as ServeTlsOptions)?.cert) {
+    secure = true;
+  }
   if (options?.reusePort) {
     return _serve(handler, options);
   }
-  if ((options as ServeTlsOptions)?.key && (options as ServeTlsOptions)?.cert) {
-    return std_server.serveTls(handler, {
-      hostname: options?.hostname || "127.0.0.1",
-      port: options?.port || 9000,
-      signal: options?.signal,
-      onListen: options?.onListen || undefined,
-      onError: options?.onError,
-      key: (options as ServeTlsOptions).key,
-      cert: (options as ServeTlsOptions).cert,
-    });
-  } else {
-    return std_server.serve(handler, {
-      hostname: options?.hostname || "127.0.0.1",
-      port: options?.port || 9000,
-      signal: options?.signal,
-      onListen: options?.onListen || undefined,
-      onError: options?.onError,
-    });
-  }
+  return (secure ? std_server.serveTls : std_server.serve)(handler, {
+    hostname: options?.hostname || "127.0.0.1",
+    port: options?.port || 9000,
+    signal: options?.signal,
+    onListen: options?.onListen || undefined,
+    onError: options?.onError,
+    key: (options as ServeTlsOptions)?.key,
+    cert: (options as ServeTlsOptions)?.cert,
+  });
 }
