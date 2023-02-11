@@ -43,6 +43,7 @@ export interface ServeTlsOptions extends ServeOptions {
   /** Cert chain in PEM format */
   key: string;
 }
+
 async function _serve(
   handler: ServeHandler,
   options?: Partial<ServeTlsOptions>
@@ -56,6 +57,7 @@ async function _serve(
       key: options.key,
       cert: options.cert,
       transport: "tcp",
+      //@ts-ignore
       reusePort: options.reusePort,
     });
   } else {
