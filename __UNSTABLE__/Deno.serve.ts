@@ -48,7 +48,6 @@ async function _serve(
   handler: ServeHandler,
   options?: Partial<ServeTlsOptions>
 ) {
-  let closed = false;
   let secure = false;
   if (options && options.key && options.cert) {
     secure = true;
@@ -67,7 +66,6 @@ async function _serve(
   options?.signal?.addEventListener(
     "abort",
     () => {
-      closed = true;
       server.close();
     },
     {
@@ -78,9 +76,6 @@ async function _serve(
     const httpRequest = Deno.serveHttp(conn);
     (async () => {
       for await (const requestEvent of httpRequest) {
-        if (closed) {
-          break;
-        }
         let response: Response;
         try {
           response = await handler(requestEvent.request);
