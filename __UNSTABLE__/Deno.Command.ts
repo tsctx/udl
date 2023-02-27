@@ -134,8 +134,12 @@ export class _Command {
     ]);
     return {
       ...status,
-      stderr: new Uint8Array(stderr),
-      stdout: new Uint8Array(stdout),
+      get stderr() {
+        return new Uint8Array(stderr);
+      },
+      get stdout() {
+        return new Uint8Array(stdout);
+      },
     };
   }
   /**
