@@ -179,11 +179,11 @@ class _ChildProcess {
     return this._process.stderr?.readable;
   }
   public get stdout() {
-    this._run()
+    this._run();
     return this._process.stdout?.readable;
   }
   public get stdin() {
-    this._run()
+    this._run();
     return this._process.stdin?.writable;
   }
   public get pid() {
@@ -193,7 +193,7 @@ class _ChildProcess {
   /** Waits for the child to exit completely, returning all its output and
    * status. */
   public async output(): Promise<CommandOutput> {
-    this._run()
+    this._run();
     const status = await this.status;
     const [stderr, stdout] = await Promise.all([
       new Response(this.stderr).arrayBuffer(),
@@ -201,8 +201,12 @@ class _ChildProcess {
     ]);
     return {
       ...status,
-      stderr: new Uint8Array(stderr),
-      stdout: new Uint8Array(stdout),
+      get stderr() {
+        return new Uint8Array(stderr);
+      },
+      get stdout() {
+        return new Uint8Array(stdout);
+      },
     };
   }
   /** Kills the process with given {@linkcode Deno.Signal}.
@@ -210,7 +214,7 @@ class _ChildProcess {
    * @param [signo="SIGTERM"]
    */
   public kill(signo?: Deno.Signal | undefined): void {
-    this._run()
+    this._run();
     this._process.kill(signo);
   }
   /** Get the status of the child. */
