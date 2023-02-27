@@ -71,36 +71,42 @@ interface CommandOutput extends CommandStatus {
   /** The buffered output from the child process' `stderr`. */
   readonly stderr: Uint8Array;
 }
-
 export class _Command {
-  private declare _process: Deno.Process<Deno.RunOptions>;
-  private declare _closed: boolean;
+  declare private _process?: Deno.Process<Deno.RunOptions>;
+  declare private _closed: boolean;
+  declare private _command: string | URL;
+  declare private _options?: CommandOptions;
   constructor(command: string | URL, options?: CommandOptions) {
-    this._process = Deno.run({
-      cmd: [command.toString(), ...(options?.args || [])],
-      cwd: options?.cwd?.toString(),
-      env: options?.env,
-      stderr: options?.stderr,
-      stdin: options?.stdin,
-      stdout: options?.stdout,
-      //@ts-ignore
-      clearEnv: options?.clearEnv,
-      //@ts-ignore
-      gid: options?.gid,
-      //@ts-ignore
-      uid: options?.uid,
-    });
     this._closed = false;
+    this._command = command;
+    this._options = options;
     options?.signal?.addEventListener(
       "abort",
       () => {
         this._closed = true;
-        this._process.close();
+        this._process?.close();
       },
       {
         once: true,
-      }
+      },
     );
+  }
+  private _run() {
+    if (this._closed || this._process) return;
+    this._process = Deno.run({
+      cmd: [this._command.toString(), ...(this._options?.args || [])],
+      cwd: this._options?.cwd?.toString(),
+      env: this._options?.env,
+      stderr: this._options?.stderr,
+      stdin: this._options?.stdin,
+      stdout: this._options?.stdout,
+      //@ts-ignore
+      clearEnv: this._options?.clearEnv,
+      //@ts-ignore
+      gid: this._options?.gid,
+      //@ts-ignore
+      uid: this._options?.uid,
+    });
   }
   /**
    * Executes the {@linkcode Deno.Command}, waiting for it to finish and
@@ -114,17 +120,17 @@ export class _Command {
    * corresponding field on {@linkcode Deno.CommandOutput} will throw a `TypeError`.
    */
   public async output(): Promise<CommandOutput> {
-    const status = await this._process.status().then(
-      (r) =>
-        ({
-          success: r.success,
-          code: r.code,
-          signal: r.signal || null,
-        } as CommandStatus)
+    this._run();
+    const status = await this._process!.status().then(
+      (r) => ({
+        success: r.success,
+        code: r.code,
+        signal: r.signal || null,
+      } as CommandStatus),
     );
     const [stderr, stdout] = await Promise.all([
-      new Response(this._process.stderr?.readable).arrayBuffer(),
-      new Response(this._process.stdout?.readable).arrayBuffer(),
+      new Response(this._process!.stderr?.readable).arrayBuffer(),
+      new Response(this._process!.stdout?.readable).arrayBuffer(),
     ]);
     return {
       ...status,
@@ -142,7 +148,9 @@ export class _Command {
    * corresponding field on {@linkcode Deno.CommandOutput} will throw a `TypeError`.
    */
   outputSync(): CommandOutput {
-    throw new Error("`Command.outputSync` is not supported. Use `Command.output`.");
+    throw new Error(
+      "`Command.outputSync` is not supported. Use `Command.output`.",
+    );
   }
   /**
    * Spawns a streamable subprocess, allowing to use the other methods.
@@ -150,30 +158,42 @@ export class _Command {
   spawn(): _ChildProcess {
     const cp = Object.create(_ChildProcess.prototype) as _ChildProcess;
     //@ts-ignore
-    cp._process = this;
+    cp._process = this._process;
+    //@ts-ignore
+    cp._command = this;
     return cp;
   }
 }
 class _ChildProcess {
-  private declare _process: Deno.Process<Deno.RunOptions>;
+  declare private _process: Deno.Process<Deno.RunOptions>;
+  declare private _command: _Command;
   private constructor() {
     throw new TypeError("Illegal constructor");
   }
+  private _run() {
+    //@ts-ignore
+    this._command._run();
+  }
   public get stderr() {
+    this._run();
     return this._process.stderr?.readable;
   }
   public get stdout() {
+    this._run()
     return this._process.stdout?.readable;
   }
   public get stdin() {
+    this._run()
     return this._process.stdin?.writable;
   }
   public get pid() {
+    this._run();
     return this._process.pid;
   }
   /** Waits for the child to exit completely, returning all its output and
    * status. */
   public async output(): Promise<CommandOutput> {
+    this._run()
     const status = await this.status;
     const [stderr, stdout] = await Promise.all([
       new Response(this.stderr).arrayBuffer(),
@@ -190,34 +210,37 @@ class _ChildProcess {
    * @param [signo="SIGTERM"]
    */
   public kill(signo?: Deno.Signal | undefined): void {
+    this._run()
     this._process.kill(signo);
   }
   /** Get the status of the child. */
   public get status() {
+    this._run();
     return this._process.status().then(
-      (r) =>
-        ({
-          success: r.success,
-          code: r.code,
-          signal: r.signal || null,
-        } as CommandStatus)
+      (r) => ({
+        success: r.success,
+        code: r.code,
+        signal: r.signal || null,
+      } as CommandStatus),
     );
   }
   /** Ensure that the status of the child process prevents the Deno process
    * from exiting. */
   public ref(): void {
+    this._run();
     throw new Error("Not supported");
   }
   /** Ensure that the status of the child process does not block the Deno
    * process from exiting. */
   public unref(): void {
+    this._run();
     throw new Error("Not supported");
   }
 }
 import { getVersion } from "./_utils.ts";
 export const Command: typeof _Command = function Command(
   command: string | URL,
-  options?: CommandOptions
+  options?: CommandOptions,
 ): _Command {
   if ("Command" in Deno) {
     //@ts-ignore
