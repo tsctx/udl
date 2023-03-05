@@ -250,17 +250,6 @@ export const Command: typeof _Command = function Command(
   command: string | URL,
   options?: CommandOptions,
 ): _Command {
-  if ("Command" in Deno) {
-    //@ts-ignore
-    return new Deno.Command(command, options);
-    //@ts-ignore
-  } else if (typeof Deno.internal !== "undefined" && Deno.internal in Deno) {
-    //@ts-ignore
-    if (Deno[Deno.internal].nodeUnstable?.Command) {
-      //@ts-ignore
-      return new Deno[Deno.internal].nodeUnstable.Command(command, options);
-    }
-  }
   const version = getVersion(Deno.version.deno)!;
   if (
     !((parseInt(version.major, 10) <= 1) &&
@@ -270,6 +259,18 @@ export const Command: typeof _Command = function Command(
 \x1b[31mWarning: Deno.Command subprocess API is stable with v1.31\x1b[0m
 \x1b[95mDeno v1.31 has been released!\x1b[0m
 `);
+  }
+  if ("Command" in Deno) {
+    //@ts-ignore
+    return new Deno.Command(command, options);
+  }
+  //@ts-ignore
+  if (typeof Deno.internal !== "undefined" && Deno.internal in Deno) {
+    //@ts-ignore
+    if (Deno[Deno.internal].nodeUnstable?.Command) {
+      //@ts-ignore
+      return new Deno[Deno.internal].nodeUnstable.Command(command, options);
+    }
   }
   return new _Command(command, options);
 } as unknown as typeof _Command;
